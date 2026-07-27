@@ -1,6 +1,9 @@
 {
+    // 소스작성 공간
     "java.project.sourcePaths": ["src"],
+    // 컴파일 폴더
     "java.project.outputPath": "bin",
+    // 외부데이터를 받을 때, 라이브러리 추가 공간
     "java.project.referencedLibraries": [
         "lib/**/*.jar"
     ]
