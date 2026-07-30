@@ -231,7 +231,7 @@ public class basic {
     public static void main(String[] args) {
         // ex01();
 
-        // 정적메서드 호출 방식
+        // 정적메서드 호출 방식 <-> new로 생성하는 방식: 인스턴스
         // basic.getLotto();
         
         printMenu();

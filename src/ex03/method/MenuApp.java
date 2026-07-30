@@ -6,6 +6,7 @@ import ex03.method.obj.basic;
 
 public class MenuApp {
     public static void main(String[] args) {
+
         // 사용자의 입력을 받아오는 객체
         Scanner scan = new Scanner(System.in);
     while (true) {
@@ -13,7 +14,19 @@ public class MenuApp {
         // 1. 메뉴 출력
         basic.printMenu();
         // 2. 사용자로부터 입력받기
-        int menu = scan.nextInt();
+        int menu = 0; // 선언과 초기화를 동시에
+
+        // 숫자가 입력될 때까지 반복
+        while(true){
+            try {
+                menu = scan.nextInt();
+                break;
+            } catch (Exception e) {
+                System.out.println("숫자만 입력이 가능합니다");
+                scan.nextLine();
+            }
+        }
+        
         System.out.println("menu : " + menu);
         // 3. 입력에 따라 메서드 실행
         if (menu == 1) {
