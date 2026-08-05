@@ -24,14 +24,17 @@ public class Employee extends Person {
 
     };
     public Employee(String name, int age, double height, double weight, int salary, String dept){
+        //부모의 생성자를 호출 - 항상 맨 위에!
         super(age, height, weight);
-        super.name = name;
+        //super.name = name;
+        setName(name); //권장: 생성자를 이용한 초기화!
         this.salary = salary;
         this.dept = dept;
     }
 
     //메서드
-    public String information(){
+    @Override
+    public String information() {
         return "";
     }
 }

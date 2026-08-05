@@ -31,7 +31,8 @@ public class Student extends Person {
     }
 
     //메서드
-    public String information(){
+    @Override
+    public String information() {
         return "";
     }
 }
