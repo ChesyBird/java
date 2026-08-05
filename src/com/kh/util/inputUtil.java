@@ -19,7 +19,6 @@ public class inputUtil {
             String text = "";
             // trim(): 앞뒤 공백 제거
             text = scan.nextLine().trim();
-            System.out.println("사용자 입력값 : " + text);
             // if(text.equals("")){}
             if(text.isEmpty()){
                 // 남은 코드블럭을 실행하지 않고
@@ -51,17 +50,34 @@ public class inputUtil {
                 continue;
             }
         }
-        System.out.println("사용자 입력값 : " + i);
         return i;
 
     }
 
-
-    public static void main(String[] args) {
-        // 정적필드, 정적메서드
-        // 클래스명.필드명/ 클래스명.메서드명
-        inputUtil.getString("이름 : ");
-        inputUtil.getInt("나이 : ");
-        inputUtil.getString("주소 : ");
+    public static double getDouble(String msg){
+        double d = 0.0;
+        while (true) {
+            System.out.print(msg);
+            try{
+                d = scan.nextDouble();
+                scan.nextLine();
+                break;
+            } catch(Exception e){
+                System.out.println("실수를 입력해주세요");
+                scan.nextLine();
+                continue;
+            }
+            
+        }
+        return d;
     }
+
+
+    // public static void main(String[] args) {
+    //     // 정적필드, 정적메서드
+    //     // 클래스명.필드명/ 클래스명.메서드명
+    //     inputUtil.getString("이름 : ");
+    //     inputUtil.getInt("나이 : ");
+    //     inputUtil.getString("주소 : ");
+    // }
 }

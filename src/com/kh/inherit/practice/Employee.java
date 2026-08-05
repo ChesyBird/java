@@ -37,4 +37,12 @@ public class Employee extends Person {
     public String information() {
         return "";
     }
+
+    @Override
+    public String toString() {
+        return super.toString() + """
+                급여: %d
+                부서: %s
+                """.formatted(salary, dept);
+    }
 }

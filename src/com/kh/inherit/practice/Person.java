@@ -1,5 +1,6 @@
 package com.kh.inherit.practice;
 
+//모든 객체는 Object를 상속받는다
 public class Person {
     //필드
     protected String name;
@@ -47,4 +48,15 @@ public class Person {
     public String information(){
         return "";
     };
+
+    @Override
+    public String toString() {
+        return """
+                이름: %s
+                나이: %d
+                키: %f
+                몸무게: %f
+                """.formatted(name, age, height, weight);
+    }
+
 }

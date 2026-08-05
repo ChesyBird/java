@@ -35,4 +35,12 @@ public class Student extends Person {
     public String information() {
         return "";
     }
+
+    @Override
+    public String toString() {
+        return super.toString() + """
+                학년: %d
+                전공: %s
+                """.formatted(grade, major);
+    }
 }
