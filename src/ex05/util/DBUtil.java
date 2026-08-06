@@ -1,3 +1,5 @@
+package ex05.util;
+
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -30,8 +32,26 @@ public class DBUtil {
     /**
      * 새 DB 연결을 반환한다.
      * 호출한 쪽에서 사용 후 반드시 close() 해야 한다 (try-with-resources 권장).
+     * 
+     * 예외를 발생시킬 소지가 있는 메서드를 사용할 경우 예외에 대한 처리가 필요하다
      */
     public static Connection getConnection() throws SQLException {
         return DriverManager.getConnection(URL, USER, PASSWORD);
     }
+
+        public static void main(String[] args) /*throws SQLException: 나를 호출한 곳으로 던짐!*/ {
+        // 예외를 발생시킬 소지가 있는 메서드를 호출 한 경우
+        // 예외를 떠넘긴 경우 - try/catch, throws
+        // 예외 처리를 해야함
+        try {
+            Connection conn = DBUtil.getConnection();
+            System.out.println(conn);
+            System.out.println("DB connection 열기");
+        } catch (SQLException e) {
+            // 데이터베이스에 오류내용을 저장
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+
 }

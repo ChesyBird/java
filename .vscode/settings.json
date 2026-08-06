@@ -6,5 +6,6 @@
     // 외부데이터를 받을 때, 라이브러리 추가 공간
     "java.project.referencedLibraries": [
         "lib/**/*.jar"
-    ]
+    ],
+    "java.dependency.packagePresentation": "hierarchical"
 }
