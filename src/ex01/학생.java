@@ -51,7 +51,6 @@ public class 학생 {
     @Override
     public String toString() {
 
-        // TODO Auto-generated method stub
         // return super.toString(); :기본
         // return 학교 + "/" + 이름 + "/" + 나이;
         return """

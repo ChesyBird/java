@@ -5,9 +5,9 @@ import java.util.List;
 
 public class BoxApp {
     public static void main(String[] args) {
-        Box intBox = new Box(1);
-        Box StringBox = new Box("str");
-        Box StudentBox = new Box(new Student("미넹", "19961007"));
+        //Box intBox = new Box(1);
+        //Box StringBox = new Box("str");
+        //Box StudentBox = new Box(new Student("미넹", "19961007"));
 
         // 타입을 확인 후 변환하거나 try-catch로 묶어야함
         // .ClassCastException Err

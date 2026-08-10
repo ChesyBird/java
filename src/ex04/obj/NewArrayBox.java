@@ -6,9 +6,9 @@ public class NewArrayBox<T> {
     private T[] arr;
     private int index;
 
-    public NewArrayBox() {
-        arr = (T[])new Object[10];
-    }
+    // public NewArrayBox() {
+    //     arr = (T[])new Object[10];
+    // }
 
     public void add(T obj){
         arr[index] = obj;

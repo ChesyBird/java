@@ -1,7 +1,10 @@
 package com.kh.inherit.practice;
 
+import ex06.annotation.Required;
+
 public class Employee extends Person {
     //필드
+    @Required
     private int salary;
     private String dept;
 

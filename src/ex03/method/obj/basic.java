@@ -1,6 +1,6 @@
 package ex03.method.obj;
 
-import java.lang.reflect.Array;
+//import java.lang.reflect.Array;
 import java.util.Arrays;
 
 public class basic {
@@ -93,7 +93,7 @@ public class basic {
         lotto1[0] = 1;
         
         // 배열의 선언과 초기화
-        String str[] = {"이미자", "오미자"};
+        //String str[] = {"이미자", "오미자"};
         
         // 배열의 선언
         // 배열은 타입의 기본값으로 초기화
@@ -103,10 +103,10 @@ public class basic {
         
         // 0-1미만의 임의의 실수를 만들어주는 기능(로또)
         // 유틸리티
-        double random = Math.random()*46 + 1;
+        //double random = Math.random()*46 + 1;
         // 형변환
         // double타입 -> int타입
-        int num = (int)random;
+        //int num = (int)random;
 
         // 반복문을 이용해서 배열에 접근 > 값을 출력
         // 초기값, 비교, 증감값
@@ -158,16 +158,16 @@ public class basic {
         // 필드를 초기화하지 않는 경우 기본값이 들어간다
         // 배열의 값을 초기화하지 않는 경우
         // 참조타입의 기본값 = null
-        String name = null;
+        //String name = null;
         // 예외를 처리하지 않으면 프로그램이 비정상적으로 종료
         // -> try/catch
         // System.out.println(name.length()); -> nullPointException
 
-        if(name != null){
-            System.out.println(name.length());
-        } else {
-            System.out.println("name은 null입니다!!");
-        }
+        // if(name != null){
+        //     System.out.println(name.length());
+        // } else {
+        //     System.out.println("name은 null입니다!!");
+        // }
             
         String res = "Y";
         // 문자열이 Y이면 계속 실행

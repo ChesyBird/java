@@ -50,7 +50,7 @@ public class MyApp {
         // 리터럴이 들어오면 기본형으로 변경
         // 정수: int형, 실수: flot형
         // long(Ll), float(Ff)같은 경우 타입 선언 후 리터럴 뒤에 타입을 붙여줘야함 
-        long num = 2200000000l;
+        //long num = 2200000000l;
         double num2 = 1.2;
         float num3 = 1.2f; 
 
@@ -61,7 +61,7 @@ public class MyApp {
         // 소문자 작성이 관례.(단, 상수는 모두 대문자)
         // _, $ 사용가능
         // 여러개의 단어가 합쳐지는 경우 카멜표기법
-        boolean trueVar = true;
+        //boolean trueVar = true;
         boolean result = num2 > num3;
 
         if(!result){
@@ -82,19 +82,20 @@ public class MyApp {
         // n++, ++n
         System.out.println("127++ : " + ++n);
         System.out.println(n);
-        int i = n;
+        //int i = n;
 
         // 강제 형변환 - 값이 왜곡될 수 있음(비추!)
         System.out.println((byte)1000);
 
-        // 입력을 받기 위해 사용하는 객체
-        // 변수타입 : 객체는 타입으로 사용할 수 있다
-        // 입력받기 위해서 입력을 받을 수 있는 스캐너 객체를 생성 
-        Scanner scanner = new Scanner(System.in);
-        // 콘솔창에서 입력을 대기하고 있다가 
-        // 엔터키가 눌러지면 사용자의 입력을 받아서 변환
-        String str = scanner.next();
-        System.out.println("사용자의 입력값 : " + str); 
+        try (// 입력을 받기 위해 사용하는 객체
+                // 변수타입 : 객체는 타입으로 사용할 수 있다
+                // 입력받기 위해서 입력을 받을 수 있는 스캐너 객체를 생성 
+        Scanner scanner = new Scanner(System.in)) {
+            // 콘솔창에서 입력을 대기하고 있다가 
+            // 엔터키가 눌러지면 사용자의 입력을 받아서 변환
+            String str = scanner.next();
+            System.out.println("사용자의 입력값 : " + str);
+        } 
 
         // 출력 - 형식에 맞게 출력
 

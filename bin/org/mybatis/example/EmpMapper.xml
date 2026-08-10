@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+  <!-- namespace: 클래스 이름 -->
+<mapper namespace="org.mybatis.example.EmpMapper">
+
+    <!-- 쿼리 질의결과를 객체에 담아서 반환
+        resultType    
+    -->
+    <!-- id: 메서드이름 -->
+  <select id="selectEmp" resultType="ex05.dto.EmpDTO">
+    select * from EMP
+  </select>
+
+<!-- 동적 쿼리 -->
+<!-- 변수처리: 외부에서 받아오기:: #{} -->
+  <select id="selectOne" resultType="ex05.dto.EmpDTO">
+    SELECT * FROM `EMP` WHERE `EMP_ID` = #{empId}
+  </select>  
+
+</mapper>

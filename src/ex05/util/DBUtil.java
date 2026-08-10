@@ -49,7 +49,6 @@ public class DBUtil {
             System.out.println("DB connection 열기");
         } catch (SQLException e) {
             // 데이터베이스에 오류내용을 저장
-            // TODO: handle exception
             e.printStackTrace();
         }
     }

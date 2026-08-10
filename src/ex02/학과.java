@@ -61,7 +61,6 @@ public class 학과 {
 
     @Override
     public String toString() {
-        // TODO Auto-generated method stub
         // return super.toString();
         // """ """; 텍스트블록:: 줄바꿈에 용이하다
         // java 8버전(장기지원버전)일때는 오류가 날 수도 있다
