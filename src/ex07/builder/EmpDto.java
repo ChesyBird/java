@@ -1,0 +1,52 @@
+package ex07.builder;
+
+import lombok.Data;
+
+@Data
+public class EmpDto {
+    private String empId;        // 사원번호 (PK)
+    private String empName;      // 직원명
+    private String empNo;        // 주민등록번호
+   
+    // builder에 있는 필드값을 이용해서 객체를 생성하고 반환함
+    private EmpDto(Builder builder){
+        // 빌더에 있는 값을 EmpDto에 세팅
+        empId = builder.empId;
+        empName = builder.empName;
+        empNo = builder.empNo;
+    }
+
+    // builder를 통해서만 객체생성
+    public static Builder builder(){
+        return new Builder();
+    }
+
+    // 내부 정적 클래스
+    public static class Builder{
+        private String empId;        // 사원번호 (PK)
+        private String empName;      // 직원명
+        private String empNo;        // 주민등록번호
+
+        public void setEmpId(String empId) {
+            this.empId = empId;
+        }
+        public void setEmpName(String empName) {
+            this.empName = empName;
+        }
+        public void setEmpNo(String empNo) {
+            this.empNo = empNo;
+        }
+        
+        public EmpDto build(){
+
+            // 필수 체크- empNo 누락된 경우
+            if(empNo == null){
+                throw new NullPointerException("empNo는 필수값입니다.");
+            }
+
+            return new EmpDto(this);
+        }
+
+    }
+
+}

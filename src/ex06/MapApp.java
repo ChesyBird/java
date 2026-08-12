@@ -59,8 +59,8 @@ public class MapApp {
         System.out.println((String)map1.get("title"));
 
         // 리스트를 꺼내서 출력해보기
-        List<Employee> mapList = (List<Employee>)map1.get("list");
-        System.out.println(mapList);
+        // List<Employee> mapList = (List<Employee>)map1.get("list");
+        // System.out.println(mapList);
 
         // map이 가지고있는 키의 목록 확인
         Set<String> keys = map.keySet();
