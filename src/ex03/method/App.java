@@ -19,8 +19,8 @@ public class App {
 
         // + getBmi(키-m:double, 몸무게-kg:double): double
         // 메서드를 호출할 때는 파라메터(값)만 넘겨준다
-        double bmi = basic.getBmi(1.63, 55.5);
-        String str = basic.bmiToStr(bmi);
+        double bmi = ex03.method.obj.basic.getBmi(1.63, 55.5);
+        String str = ex03.method.obj.basic.bmiToStr(bmi);
         System.out.println(str);
     }
 }
