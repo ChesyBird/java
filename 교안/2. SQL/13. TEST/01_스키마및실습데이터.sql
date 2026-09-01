@@ -398,7 +398,9 @@ DESC TABLE TB_DEPARTMENT;
 -- =====================================================================
 --  3. 적재 확인
 -- =====================================================================
+-- 첫번째 쿼리의 별칭이 결과집합의 타이틀로 사용
 SELECT 'TB_DEPARTMENT'      AS TABLE_NAME, COUNT(*) AS CNT FROM TB_DEPARTMENT
+-- UNION ALL : 여러개의 결과집합을 하나의 결과집합으로 만들어주는 집합(합집합, 교집합, 차집합)함수
 UNION ALL SELECT 'TB_PROFESSOR',       COUNT(*) FROM TB_PROFESSOR
 UNION ALL SELECT 'TB_STUDENT',         COUNT(*) FROM TB_STUDENT
 UNION ALL SELECT 'TB_CLASS',           COUNT(*) FROM TB_CLASS

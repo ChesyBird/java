@@ -1,0 +1,71 @@
+-- 부서별 급여의 평균
+-- GROUP BY : 행을 압축 -> 그룹 당 하나의 행이 출력
+-- 조회할 수 있는 컬럼에 제약이 발생
+SELECT		DEPT_ID, AVG(SALARY)
+FROM		EMP
+GROUP BY	DEPT_ID;
+
+SELECT EMP_NAME, DEPT_ID, SALARY, AVG(SALARY) OVER (PARTITION BY DEPT_ID) '부서별 급여의 평균'
+FROM EMP;
+
+SELECT EMP_NAME, DEPT_ID, SALARY, AVG(SALARY) OVER (PARTITION BY JOB_CODE) '직급별 급여의 평균'
+FROM EMP;
+
+-- 순위함수
+-- 동일순위(같은값)을 처리하는 방식이 다르다
+-- ROW_NUMBER / RANK / DENSE_RANK
+SELECT	-- SALARY, ROW_NUMBER() OVER (ORDER BY SALARY)
+		-- 입사년도가 빠른 순서
+		EXTRACT(YEAR FROM HIRE_DATE) 입사년도,
+        ROW_NUMBER() OVER (ORDER BY EXTRACT(YEAR FROM HIRE_DATE)) ROWNUM순번,
+        RANK() OVER (ORDER BY EXTRACT(YEAR FROM HIRE_DATE)) 'RANK순위',
+        DENSE_RANK() OVER (ORDER BY EXTRACT(YEAR FROM HIRE_DATE)) DRANK밀집순위
+FROM	EMP; -- ORDER BY : 정렬
+
+SELECT	EXTRACT(YEAR FROM HIRE_DATE) 입사년도,
+        ROW_NUMBER() OVER (PARTITION BY EXTRACT(YEAR FROM HIRE_DATE)) ROWNUM순번,
+        RANK() OVER (PARTITION BY EXTRACT(YEAR FROM HIRE_DATE)) 'RANK순위',
+        DENSE_RANK() OVER (PARTITION BY EXTRACT(YEAR FROM HIRE_DATE)) DRANK밀집순위
+FROM	EMP; -- PARTITION BY : 그룹으로 묶기
+
+-- 부서별 급여의 순위
+SELECT *
+-- 서브쿼리를 테이블로 사용하기
+-- 서브쿼리를 ()로 묶어서 별칭을 준다 : 인라인뷰
+-- 테이블 이름을 별칭으로 주지 않으면 오류가 발생
+FROM	(SELECT	DEPT_ID, SALARY,
+				RANK() OVER (PARTITION BY DEPT_ID ORDER BY SALARY DESC) '부서별 급여 순위'
+		FROM	EMP) T
+WHERE	'부서별 급여 순위' < 4;
+
+-- 윈도우함수는 WHERE절에서 직접사용이 불가능함(SQL실행순서에 의해 HAVING절 다음에 실행)
+-- 윈도우함수의 조건을 주고싶은 경우, 서브쿼리를 이용해서 조건을 준다
+-- 공통테이블 표현식 (CTE)
+WITH T AS (SELECT	DEPT_ID, SALARY,
+					RANK() OVER (PARTITION BY DEPT_ID ORDER BY SALARY DESC) '부서별 급여 순위'
+			FROM	EMP)
+SELECT	*
+FROM	T;
+
+SELECT	DEPT_ID, SALARY,
+		RANK() OVER (PARTITION BY DEPT_ID ORDER BY SALARY DESC) '부서별 급여 순위'
+FROM	EMP;
+
+-- 급여가 높은 사람 5명을 조회
+WITH T AS (SELECT EMP_NAME, SALARY, RANK() OVER (ORDER BY SALARY DESC) 순위
+			FROM EMP)  -- 가상의 테이블을 만들고
+SELECT * FROM T	-- 가상의 테이블을 참조
+WHERE	순위 < 6;
+
+SELECT		SALARY
+FROM		EMP
+ORDER BY	SALARY DESC
+LIMIT		5;
+
+-- 누적합계
+-- 집계함수를 사용할 때 윈도우함수의 ORDER BY절을 추가할 경우 누적집계를 구할 수 있다
+SELECT	EMP_NAME, DEPT_ID, SALARY, 
+		SUM(SALARY) OVER (PARTITION BY DEPT_ID ORDER BY SALARY DESC) '급여의 누적합계'
+FROM	EMP;
+
+
