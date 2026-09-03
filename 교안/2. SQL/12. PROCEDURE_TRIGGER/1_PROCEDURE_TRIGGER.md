@@ -559,6 +559,33 @@ INSERT INTO SALARY_LOG (EMP_ID, OLD_SALARY, NEW_SALARY) VALUES ('200', 0, 0);
 -- 위가 중복이면 아무 일 없이 다음 문장으로
 ```
 
+**구문 뜯어보기**:
+
+| 부분 | 의미 |
+| --- | --- |
+| `DECLARE ... HANDLER` | 예외 핸들러를 선언 |
+| `CONTINUE` | 오류가 나도 멈추지 말고 **다음 문장부터 계속** 실행 (`EXIT` 이면 블록 종료) |
+| `FOR 1062` | 반응할 조건 - `1062` 는 **중복 키(Duplicate entry) 오류 번호** |
+| `BEGIN END` | 오류가 잡혔을 때 **실행할 동작(문장 블록)**. 안이 비어 있으니 **"아무것도 하지 마라"** |
+
+- 즉 전체 의미는 **"중복 키 오류(1062)가 나면, 아무 처리도 하지 않고 그냥 넘어가라"** 입니다.
+  중복 데이터를 조용히 버리고 계속 진행하는 패턴.
+- 동작이 **한 문장**이면 `BEGIN ... END` 없이 바로 씁니다.
+  예: `DECLARE CONTINUE HANDLER FOR 1062 SET V_DUP = V_DUP + 1;`
+- `BEGIN ... END` 는 **여러 문장을 하나로 묶을 때**, 또는 지금처럼 **"묶긴 하되 실제로는 아무것도 안 함"**을
+  표현할 때 씁니다. 5.3 예제(`ROLLBACK; RESIGNAL;`)가 전자, 이 예제가 후자.
+- 동작 안에 로직을 넣어 활용할 수도 있습니다.
+
+  ```sql
+  DECLARE V_DUP INT DEFAULT 0;
+
+  DECLARE CONTINUE HANDLER FOR 1062
+  BEGIN
+      SET V_DUP = V_DUP + 1;        -- 중복 건수 카운트
+      -- INSERT INTO ERROR_LOG ...  -- 로그 남기기 등
+  END;
+  ```
+
 > 핸들러가 넓을수록(`SQLEXCEPTION` 전체를 `CONTINUE` 로) 진짜 버그까지 삼켜 원인 추적이
 > 어려워집니다. **꼭 예상되는 조건만 좁게** 잡고, `EXIT` + `RESIGNAL` 을 기본으로 삼으세요.
 
@@ -576,7 +603,50 @@ DROP PROCEDURE IF EXISTS GET_SALARY_SAFE;
 
 ---
 
-## 7. TRIGGER 기본 - AFTER UPDATE
+## 7. TRIGGER 기본
+
+### 7.1 문법
+
+```sql
+DELIMITER $$
+
+CREATE TRIGGER <트리거명>
+{BEFORE | AFTER} {INSERT | UPDATE | DELETE} ON <테이블명>
+FOR EACH ROW
+BEGIN
+    -- 이벤트가 걸린 행마다 1번씩 실행되는 본문
+    -- OLD.컬럼 / NEW.컬럼 으로 그 행의 값을 참조
+END $$
+
+DELIMITER ;
+```
+
+**① 시점 × 이벤트 = 6가지** — `{BEFORE|AFTER}` × `{INSERT|UPDATE|DELETE}`
+
+| | `BEFORE` (저장 전) | `AFTER` (저장 후) |
+|---|---|---|
+| 주 용도 | 저장될 값 **검증·가공**(`SET NEW.컬럼 = ...`), 잘못된 값이면 `SIGNAL` 로 거부 | **이력 로깅**, 다른 테이블 집계 갱신 등 부수 작업 |
+| `NEW` 값 수정 | 가능 (그 값이 실제로 저장됨) | 불가 (이미 저장 끝 — 바꿔도 무시) |
+
+**② `OLD` / `NEW`** — 그 행의 값을 가리키는 의사 레코드
+
+| 이벤트 | `OLD` (변경 전) | `NEW` (변경 후) |
+|---|---|---|
+| `INSERT` | 없음 (에러) | 삽입될 행 |
+| `UPDATE` | 수정 전 행 | 수정 후 행 |
+| `DELETE` | 삭제될 행 | 없음 (에러) |
+
+**③ 규칙·주의**
+
+- `FOR EACH ROW` 는 필수. MySQL 은 **행 단위 트리거만** 지원(문(statement) 단위 없음).
+- 본문에 `;` 가 들어가므로 **`DELIMITER` 변경**이 필요(프로시저와 동일).
+- 트리거 안에서는 `COMMIT`/`ROLLBACK`/`START TRANSACTION` **금지**. 트리거는 그 DML 의
+  트랜잭션에 묶여 실행되고, 본문에서 오류(`SIGNAL` 포함)가 나면 원래 DML 도 함께 롤백됩니다.
+- 같은 테이블·같은 시점·같은 이벤트에 트리거를 여러 개 둘 수 있음. 순서를 정하려면
+  `FOLLOWS`/`PRECEDES <다른트리거명>` 을 붙입니다.
+- 이벤트가 걸린 테이블 자신을 트리거 본문에서 다시 변경하면 재귀/오류(8절 참고).
+
+### 7.2 예제 1 - AFTER UPDATE
 
 ```sql
 -- 0절의 EMP_COPY 재생성 스크립트를 다시 실행해 상태를 초기화한 뒤 진행합니다.
@@ -613,7 +683,7 @@ SELECT EMP_ID, OLD_SALARY, NEW_SALARY FROM SALARY_LOG WHERE EMP_ID = '209';
 
 ---
 
-## 8. TRIGGER - BEFORE INSERT
+### 7.3 예제 2 - BEFORE INSERT
 
 ```sql
 DELIMITER $$
@@ -647,7 +717,7 @@ SELECT EMP_ID, EMP_NAME, ENT_YN FROM EMP_COPY WHERE EMP_ID = '221';
 
 ---
 
-## 9. 트리거의 무한 루프 위험
+## 8. 트리거의 무한 루프 위험
 
 ```sql
 -- 절대 실행하지 마세요 (무한 루프 예시, 주석 처리된 상태로만 확인)
@@ -661,14 +731,59 @@ SELECT EMP_ID, EMP_NAME, ENT_YN FROM EMP_COPY WHERE EMP_ID = '221';
 
 **설명**: `AFTER UPDATE ON EMP_COPY` 트리거 본문 안에서 다시 `EMP_COPY`를
 `UPDATE`하면, 그 `UPDATE`가 같은 트리거를 다시 실행시키고, 그 트리거가 또
-`UPDATE`를 실행하는 **무한 루프**에 빠집니다(MySQL은 기본적으로 트리거 재귀 호출
-깊이를 제한하지만, 결국 `Trigger recursion too deep` 오류로 죽습니다). 트리거
-안에서 로그를 남기고 싶다면 **자기 자신이 아닌 다른 테이블**(7절의 `SALARY_LOG`
-처럼)에 기록해야 합니다.
+`UPDATE`를 실행하는 **연쇄 재귀**가 됩니다. 트리거 안에서 로그를 남기고 싶다면
+**자기 자신이 아닌 다른 테이블**(7절의 `SALARY_LOG`처럼)에 기록해야 합니다.
+
+### 8.1 실제로 걸렸을 때 - 증상과 처리 방안
+
+**증상 (MySQL이 어떻게 막는가)**
+
+| 상황 | MySQL 동작 |
+|---|---|
+| 트리거가 **자기 테이블**을 직접 `UPDATE`/`INSERT`/`DELETE` | 실행 시점에 `ERROR 1442` (`Can't update table ... already used by statement which invoked this ... trigger`)로 **거부**. 실제로 무한 루프까지 가지 않음 |
+| 서로 다른 테이블 트리거가 **순환**(A 수정→B트리거→A 수정→…) | `ERROR 1456` (`Recursive ... triggers are not allowed`) 또는 스택 한도 초과. 해당 DML **전체가 롤백** |
+| 프로시저에서 자기 자신을 재귀 `CALL` | `max_sp_recursion_depth`(기본 0) 초과 시 `ERROR 1456`. 이 변수는 **프로시저 전용**이며 트리거엔 적용 안 됨 |
+
+- 공통점: 트리거·프로시저 본문에서 난 오류는 **원래 트랜잭션에 묶여 함께 롤백**되므로,
+  데이터가 절반만 반영되는 오염은 생기지 않습니다. 이미 별도로 커밋된 이력 행만 정리하면 됩니다.
+
+**복구 절차**
+
+1. 순환 고리 중 **트리거 하나만 제거**하면 연쇄가 끊깁니다.
+   ```sql
+   DROP TRIGGER IF EXISTS TRG_INFINITE;
+   ```
+2. `SHOW TRIGGERS;` 또는
+   `SELECT TRIGGER_NAME, EVENT_OBJECT_TABLE, ACTION_TIMING, EVENT_MANIPULATION FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE();`
+   로 어느 테이블에 무슨 트리거가 걸려 있는지 확인해 순환 경로를 찾습니다.
+3. 오류로 롤백됐으니 데이터 복구는 대개 불필요. 필요하면 0절의 `EMP_COPY` 재생성으로 초기화.
+
+**재설계 방안 (되풀이 방지)**
+
+| 방법 | 내용 |
+|---|---|
+| ① 다른 테이블에 기록 | 이력은 자기 테이블이 아닌 **로그 테이블**로 (7절 패턴). 순환 자체를 없앰 |
+| ② 가드 조건 | 값이 **실제로 바뀐 경우에만** 동작: `IF OLD.SALARY <> NEW.SALARY THEN ...`. 불필요한 연쇄를 차단 |
+| ③ `BEFORE` 로 값 보정 | 같은 행의 값을 바꾸려면 다시 `UPDATE` 하지 말고 `BEFORE` 트리거에서 `SET NEW.컬럼 = ...`. 추가 DML이 없어 연쇄가 생기지 않음 |
+| ④ 세션 변수 플래그 | 순환이 불가피한 구조면 재진입을 막음 (아래) |
+
+```sql
+-- ④ 재진입 차단 패턴 (다른 테이블 트리거끼리 순환할 때)
+CREATE TRIGGER TRG_SYNC_B
+AFTER UPDATE ON TABLE_A
+FOR EACH ROW
+BEGIN
+    IF @IN_TRG IS NULL THEN          -- 이미 트리거 연쇄 안이면 재실행 안 함
+        SET @IN_TRG = 1;
+        UPDATE TABLE_B SET ... WHERE ...;
+        SET @IN_TRG = NULL;          -- 연쇄 끝나면 해제
+    END IF;
+END;
+```
 
 ---
 
-## 10. DROP TRIGGER
+## 9. DROP TRIGGER
 
 ```sql
 DROP TRIGGER IF EXISTS TRG_EMP_SALARY_LOG;
@@ -690,7 +805,7 @@ DROP TRIGGER IF EXISTS TRG_EMP_DEFAULT_ENTYN;
 - **핸들러 동작이 여러 문장인데 `BEGIN ... END` 로 안 감쌈** → 문법 오류. 한 문장이면
   블록 없이도 됩니다.
 - **커서를 `OPEN`만 하고 `CLOSE`를 안 함** → 리소스가 계속 열린 채로 남습니다.
-- **트리거 안에서 자기 테이블을 다시 `UPDATE`/`INSERT`** → 무한 루프(9절).
+- **트리거 안에서 자기 테이블을 다시 `UPDATE`/`INSERT`** → 무한 루프(8절).
 - **`AFTER` 트리거에서 `NEW` 값을 바꾸면 반영될 거라 착각** → `BEFORE`
   트리거에서만 `NEW` 값 변경이 실제 저장값에 반영됩니다.
 - **프로시저의 `OUT` 파라미터에 값을 채우지 않고 끝냄** → 호출부에서 `NULL`을
@@ -721,5 +836,201 @@ DROP TRIGGER IF EXISTS TRG_EMP_DEFAULT_ENTYN;
 | SQLSTATE·오류번호 | 목록·`SIGNAL`/`RESIGNAL`/`GET DIAGNOSTICS` → [SQLSTATE_참고표.md](SQLSTATE_참고표.md) |
 | `CREATE TRIGGER` | `BEFORE`/`AFTER` × `INSERT`/`UPDATE`/`DELETE`, `OLD`/`NEW`로 값 참조 |
 | `BEFORE` 트리거 | `NEW` 값을 바꿔 실제 저장값을 변경 가능 |
-| 트리거 무한 루프 | 트리거 안에서 자기 테이블을 다시 변경하면 발생. 다른 테이블에 기록해서 회피 |
+| 트리거 무한 루프 | 자기 테이블 재변경은 `ERROR 1442`, 순환 트리거는 `ERROR 1456` 로 MySQL이 막고 DML은 롤백됨. 걸리면 순환 고리의 트리거 하나를 `DROP`. 예방: 다른 테이블에 기록 / `IF OLD<>NEW` 가드 / `BEFORE`서 `SET NEW` / `@플래그` 재진입 차단 (8.1절) |
 | `DROP PROCEDURE`/`DROP TRIGGER` | 정리 |
+
+---
+
+## 실무에서는 언제 쓰나 - ERP · 결재 · 도서관리 시스템
+
+> 아래 예시는 핵심만 보이려고 `DELIMITER $$ … $$ DELIMITER ;` 감싸기와 `DROP ... IF EXISTS`를
+> 생략했습니다. 실제 실행할 때는 앞 절들처럼 붙여야 합니다. 테이블·컬럼명도 개념 전달용입니다.
+
+### 1) ERP - 재고·회계처럼 "항상 맞아떨어져야" 하는 값
+
+| 업무 | 무엇을 | 트리거/프로시저 |
+|---|---|---|
+| 입출고가 기록되면 품목별 현재고 자동 반영 | 파생값 자동 갱신 | 트리거 (`AFTER INSERT`) |
+| 매출 전표 발생 시 분개(매출채권/매출) 자동 생성 | 여러 행 INSERT | 프로시저 `CALL` |
+| 월마감 - 기간 합계를 마감표에 적재 + 원장에 마감표시 | 여러 DML을 한 트랜잭션으로 | 프로시저 + `START TRANSACTION` |
+| 단가·계정 변경 이력 | 감사 로그 | 트리거 (`AFTER UPDATE`, `OLD<>NEW`) |
+
+**재고 자동 반영 트리거** — 이동 테이블에 한 줄 넣으면 현재고가 따라옵니다.
+
+```sql
+CREATE TRIGGER TRG_STOCK_APPLY
+AFTER INSERT ON STOCK_MOVE            -- STOCK_MOVE(이동ID, 품목ID, MOVE_TYPE('IN'/'OUT'), QTY, ...)
+FOR EACH ROW
+BEGIN
+    UPDATE ITEM_STOCK
+    SET QTY = QTY + IF(NEW.MOVE_TYPE = 'IN', NEW.QTY, -NEW.QTY),
+        UPDATED_AT = NOW()
+    WHERE ITEM_ID = NEW.ITEM_ID;
+END
+```
+
+**설명**: 배치·수기·API 어느 경로로 입출고가 들어와도 재고가 한 곳(트리거)에서 일관되게
+계산됩니다. 갱신 대상이 자기 테이블(`STOCK_MOVE`)이 아니라 `ITEM_STOCK`이라 8절의 무한
+루프에 걸리지 않습니다. 7.2의 `SALARY_LOG` 패턴과 같은 구조입니다.
+
+**월마감 프로시저** — 집계 적재와 상태 변경을 전부 성공 아니면 전부 취소.
+
+```sql
+CREATE PROCEDURE CLOSE_MONTH(IN P_YM CHAR(6))
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN ROLLBACK; RESIGNAL; END;
+
+    START TRANSACTION;
+        INSERT INTO CLOSE_SUMMARY (YM, ACCT_ID, AMT)
+        SELECT P_YM, ACCT_ID, SUM(AMT)
+        FROM JOURNAL
+        WHERE DATE_FORMAT(TRX_DATE, '%Y%m') = P_YM
+        GROUP BY ACCT_ID;
+
+        UPDATE JOURNAL SET CLOSED = 'Y'
+        WHERE DATE_FORMAT(TRX_DATE, '%Y%m') = P_YM;
+    COMMIT;
+END
+```
+
+**설명**: 5.3의 롤백 핸들러 패턴 그대로입니다. 마감표만 만들어지고 원장 마감표시가 안 되는
+어정쩡한 상태를 막습니다.
+
+### 2) 결재 시스템 - 상태 변화 이력과 후속 처리
+
+| 업무 | 무엇을 | 트리거/프로시저 |
+|---|---|---|
+| 문서 상태가 바뀔 때마다 "누가·언제·무슨 상태로" 기록 | 감사 로그 | 트리거 (`AFTER UPDATE`) |
+| 반려되면 기안자에게 알림 | 부수 작업 | 같은 트리거 안에서 알림 큐 INSERT |
+| 문서 생성 시 부서 규칙대로 결재선 여러 단계 자동 생성 | 규칙 테이블 순회 | 프로시저 + 커서 |
+| 최종 승인 시 연차 차감·예산 차감 등 후속 반영 | 여러 DML 묶음 | 프로시저 `CALL` |
+
+**상태 이력 + 반려 알림 트리거**
+
+```sql
+CREATE TRIGGER TRG_APPROVAL_HISTORY
+AFTER UPDATE ON APPROVAL_DOC
+FOR EACH ROW
+BEGIN
+    IF OLD.STATUS <> NEW.STATUS THEN
+        INSERT INTO APPROVAL_HISTORY (DOC_ID, FROM_STATUS, TO_STATUS, ACTOR_ID, CHANGED_AT)
+        VALUES (NEW.DOC_ID, OLD.STATUS, NEW.STATUS, NEW.LAST_ACTOR, NOW());
+
+        IF NEW.STATUS = 'REJECTED' THEN
+            INSERT INTO NOTI_QUEUE (USER_ID, MSG)
+            VALUES (NEW.DRAFTER_ID, CONCAT('문서 ', NEW.DOC_ID, ' 가 반려되었습니다.'));
+        END IF;
+    END IF;
+END
+```
+
+**설명**: 앱 코드가 여러 화면·배치에서 상태를 바꿔도 이력은 빠짐없이 남습니다. 감사(audit)
+요건이 있는 시스템에서 트리거가 가장 흔하게 쓰이는 자리입니다.
+
+**결재선 자동 생성 프로시저** — 4절 커서 패턴의 실무 버전.
+
+```sql
+CREATE PROCEDURE MAKE_APPROVAL_LINE(IN P_DOC_ID INT, IN P_DRAFTER VARCHAR(10))
+BEGIN
+    DECLARE V_DONE INT DEFAULT 0;
+    DECLARE V_APPROVER VARCHAR(10);
+    DECLARE V_STEP INT DEFAULT 1;
+
+    DECLARE CUR CURSOR FOR
+        SELECT APPROVER_ID FROM APPROVAL_RULE
+        WHERE DEPT_ID = (SELECT DEPT_ID FROM EMP WHERE EMP_ID = P_DRAFTER)
+        ORDER BY STEP_ORDER;
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET V_DONE = 1;
+
+    OPEN CUR;
+    READ_LOOP: LOOP
+        FETCH CUR INTO V_APPROVER;
+        IF V_DONE = 1 THEN LEAVE READ_LOOP; END IF;
+
+        INSERT INTO APPROVAL_LINE (DOC_ID, STEP, APPROVER_ID, STATUS)
+        VALUES (P_DOC_ID, V_STEP, V_APPROVER, 'WAITING');
+        SET V_STEP = V_STEP + 1;
+    END LOOP;
+    CLOSE CUR;
+END
+```
+
+**설명**: 규칙 테이블(`APPROVAL_RULE`)을 한 행씩 돌며 결재 단계 행을 만들어 넣습니다.
+"한 문장으로 안 되는 행 단위 처리"라 커서가 정당하게 쓰이는 예입니다.
+
+### 3) 도서관리 시스템 - 대출 규칙과 반납 정산
+
+| 업무 | 무엇을 | 트리거/프로시저 |
+|---|---|---|
+| 대출 시 회원 대출 권수 한도 검사, 초과면 거부 | 무결성 규칙 강제 | 트리거 (`BEFORE INSERT` + `SIGNAL`) |
+| 대출일·반납예정일 기본값 자동 채움 | 파생값 | 같은 `BEFORE INSERT` 트리거 |
+| 반납 시 연체일 계산 → 연체료 부과 | 조건 분기 + 여러 DML | 프로시저 |
+| 도서별 대출 횟수(인기순위) 집계 갱신 | 파생값 | 트리거 (`AFTER INSERT`) |
+
+**대출 한도 검증 + 기본값 트리거**
+
+```sql
+CREATE TRIGGER TRG_RENTAL_LIMIT
+BEFORE INSERT ON RENTAL
+FOR EACH ROW
+BEGIN
+    DECLARE V_CNT INT;
+
+    SELECT COUNT(*) INTO V_CNT
+    FROM RENTAL
+    WHERE MEMBER_ID = NEW.MEMBER_ID AND RETURN_DATE IS NULL;
+
+    IF V_CNT >= 5 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = '대출 한도(5권)를 초과했습니다.';
+    END IF;
+
+    SET NEW.RENT_DATE = IFNULL(NEW.RENT_DATE, CURDATE());
+    SET NEW.DUE_DATE  = IFNULL(NEW.DUE_DATE,  CURDATE() + INTERVAL 14 DAY);
+END
+```
+
+**설명**: 업무 규칙(한도 5권, 반납예정일 14일)을 DB가 강제합니다. `SIGNAL`로 오류를 내면
+그 `INSERT`는 취소되고 트랜잭션도 롤백됩니다(7.1 규칙). 7.3의 기본값 채우기와 5절의
+`SIGNAL`을 합친 형태입니다.
+
+**반납 처리 프로시저** — 반납과 연체료 부과를 한 묶음으로.
+
+```sql
+CREATE PROCEDURE RETURN_BOOK(IN P_RENTAL_ID INT)
+BEGIN
+    DECLARE V_DUE DATE;
+    DECLARE V_OVERDUE INT;
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN ROLLBACK; RESIGNAL; END;
+
+    START TRANSACTION;
+        SELECT DUE_DATE INTO V_DUE FROM RENTAL WHERE RENTAL_ID = P_RENTAL_ID;
+        SET V_OVERDUE = GREATEST(DATEDIFF(CURDATE(), V_DUE), 0);
+
+        UPDATE RENTAL SET RETURN_DATE = CURDATE() WHERE RENTAL_ID = P_RENTAL_ID;
+
+        IF V_OVERDUE > 0 THEN
+            INSERT INTO FINE (RENTAL_ID, OVERDUE_DAYS, AMOUNT)
+            VALUES (P_RENTAL_ID, V_OVERDUE, V_OVERDUE * 100);   -- 하루 100원
+        END IF;
+    COMMIT;
+END
+```
+
+**설명**: 3절의 `IF` 분기와 5.3의 트랜잭션 패턴을 합쳤습니다. 반납 표시만 되고 연체료가
+누락되는 일을 막습니다.
+
+### 정리 - 트리거로 갈지, 프로시저로 갈지, 앱으로 갈지
+
+| 상황 | 선택 | 이유 |
+|---|---|---|
+| 변경 이력·감사 로그, 파생값 자동 채움, 무결성 규칙 강제 | **트리거** | 호출을 "빠뜨리면 안 되는" 것들. 이벤트에 자동으로 붙음 |
+| 여러 단계를 한 트랜잭션으로 묶는 업무(마감·이체·반납정산) | **프로시저** | 트랜잭션 제어가 필요하고 명시적으로 `CALL` |
+| 규칙 테이블을 돌며 여러 행 생성(결재선·스케줄 전개) | **프로시저 + 커서** | 행 단위 절차 처리 |
+| 화면마다 다르게 조합되는 조회·표시 로직 | **앱(Service) 계층** | DB에 묶으면 이식성·테스트·버전관리가 나빠짐 |
+
+**실무 감각**: 트리거는 눈에 안 보이게 동작해서(44행) 신입이 원인 추적에 애를 먹습니다.
+그래서 요즘 많은 팀은 **핵심 업무 트랜잭션은 앱 계층**에 두고, 프로시저·트리거는
+**감사 로그·정합성 보강·기본값**처럼 범위가 좁고 예측 가능한 곳에만 제한적으로 씁니다.
+"이 로직이 DB에 항상 붙어 있어야 하는가, 아니면 특정 앱의 사정인가"를 기준으로 판단하세요.
