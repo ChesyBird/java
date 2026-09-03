@@ -1,0 +1,129 @@
+-- A. 기본 SELECT · 연산자
+-- 1. 모든 학과의 학과이름과 계열을 출력하시오. 출력 헤더는 학과명, 계열.
+SELECT	DEPARTMENT_NAME 학과명, CATEGORY 계열
+FROM	TB_DEPARTMENT;
+
+-- 2. 정원(CAPACITY)이 20 이상 30 이하인 학과의 학과이름과 정원을, 정원 내림차순으로 출력하시오.
+SELECT	DEPARTMENT_NAME 학과명, CAPACITY 정원
+FROM	TB_DEPARTMENT
+WHERE	CAPACITY >= 20
+		AND CAPACITY <= 30
+ORDER BY	CAPACITY DESC;
+
+-- 3. 학번이 A011004, A041010, A071022 인 학생의 학번과 이름을 출력하시오. (IN 사용)
+SELECT	STUDENT_NO 학번, STUDENT_NAME 이름
+FROM	TB_STUDENT
+WHERE	STUDENT_NO IN ('A011004', 'A041010', 'A071022');
+
+-- 4. 지도교수가 배정되지 않은 학생의 이름을 출력하시오.
+SELECT	STUDENT_NAME 이름
+FROM	TB_STUDENT
+WHERE	COACH_PROFESSOR_NO IS NULL;
+
+-- 5. 어떤 계열(CATEGORY)이 있는지 중복 없이 계열 오름차순으로 출력하시오.
+SELECT	DISTINCT CATEGORY
+FROM	TB_DEPARTMENT
+ORDER BY	CATEGORY;
+
+-- B. 함수
+-- 1. 교수 중 이름이 세 글자가 아닌 교수의 이름과 주민번호를 출력하시오.
+SELECT	PROFESSOR_NAME 이름, PROFESSOR_SSN 주민번호
+FROM	TB_PROFESSOR
+WHERE	CHAR_LENGTH(PROFESSOR_NAME) != 3;
+
+-- 2. 모든 학과를 국어국문학과의 정원은 20명 입니다. 형태의 한 문장으로 출력하시오. 헤더는 학과별 정원.
+SELECT	CONCAT(DEPARTMENT_NAME, '의 정원은 ', CAPACITY, '명 입니다.') '학과별 정원'
+FROM	TB_DEPARTMENT;
+
+-- 3. 남자 교수의 이름과 주민번호를 출력하시오.
+SELECT	PROFESSOR_NAME 이름, PROFESSOR_SSN 주민번호
+FROM	TB_PROFESSOR
+WHERE	SUBSTRING(PROFESSOR_SSN, 8, 1) IN (1, 3);
+
+-- 4. 학생의 입학연도를 구해 학번, 이름, 입학연도를 입학연도 오름차순(같으면 학번순)으로 출력하시오. 헤더는 학번, 이름, 입학연도.
+SELECT	STUDENT_NO 학번, STUDENT_NAME 이름, YEAR(ENTRANCE_DATE) 입학년도
+FROM	TB_STUDENT
+ORDER BY	YEAR(ENTRANCE_DATE), STUDENT_NO;
+
+-- 5. 교수의 이름과 만 나이를 나이가 적은 사람부터 출력하시오. (오늘 기준) 헤더는 교수이름, 나이. (사용자 정의함수 GET_AGE()는 나이를 반환하는 함수)
+-- 나이반환함수
+DELIMITER $$
+CREATE FUNCTION GET_AGE (P_SSN CHAR(14))
+RETURNS INT
+READS SQL DATA
+BEGIN
+	DECLARE V_AGE INT;
+    SET V_AGE = TIMESTAMPDIFF(YEAR, STR_TO_DATE( CASE WHEN SUBSTRING(P_SSN, 8, 1) IN ('1', '2') THEN CONCAT('19', SUBSTRING(P_SSN, 1, 6))
+				WHEN SUBSTRING(P_SSN, 8, 1) IN ('3', '4') THEN CONCAT('20', SUBSTRING(P_SSN, 1, 6))
+				END, '%Y%m%d'), NOW());
+    RETURN V_AGE;
+END $$
+DELIMITER ;
+
+SELECT	PROFESSOR_NAME 교수이름, GET_AGE(PROFESSOR_SSN) 나이
+FROM	TB_PROFESSOR
+ORDER BY	나이;
+
+-- C. JOIN / 서브쿼리
+-- 1. 학생번호, 학생이름, 학과이름을 학생이름 오름차순으로 출력하시오.
+SELECT	STUDENT_NO 학생번호, STUDENT_NAME 학생이름, DEPARTMENT_NAME 학과이름
+FROM	TB_STUDENT
+LEFT JOIN	TB_DEPARTMENT USING (DEPARTMENT_NO)
+ORDER BY	STUDENT_NAME;
+
+-- 2. 선수과목이 있는 과목에 대해 과목이름과 그 선수과목의 이름을 출력하시오. 헤더는 과목, 선수과목.
+SELECT	A.CLASS_NAME 과목, B.CLASS_NAME 선수과목
+FROM	TB_CLASS A
+JOIN	TB_CLASS B
+		ON A.PREATTENDING_CLASS_NO = B.CLASS_NO;
+
+-- 3. 담당 교수가 한 명도 배정되지 않은 과목의 과목이름과 학과이름을 출력하시오.
+SELECT	CLASS_NAME 과목이름, DEPARTMENT_NAME 학과이름
+FROM	TB_CLASS
+JOIN	TB_DEPARTMENT USING(DEPARTMENT_NO)
+LEFT JOIN	TB_CLASS_PROFESSOR USING(CLASS_NO)
+WHERE	CLASS_NO IS NULL;
+
+-- 4. '국어국문학과'에 다니는 학생의 이름을 출력하시오. (학과코드는 TB_DEPARTMENT 를 조회해서 사용)
+SELECT	STUDENT_NAME
+FROM	TB_STUDENT
+JOIN	TB_DEPARTMENT USING(DEPARTMENT_NO)
+WHERE	DEPARTMENT_NAME LIKE '국어국문학과';
+
+-- 5. 성적이 한 건도 없는 학생의 이름을 출력하시오.
+SELECT	STUDENT_NAME
+FROM	TB_STUDENT
+LEFT JOIN	TB_GRADE USING (STUDENT_NO)
+WHERE	STUDENT_NO IS NULL;
+
+-- E. 그룹함수 · 집계 · 윈도우 함수
+-- 1. 학과별 학생 수를 출력하시오. 헤더는 학과번호, 학생수(명). 학과번호 오름차순.
+SELECT	DEPARTMENT_NO 학과번호, COUNT(*) '학생수(명)'
+FROM	TB_STUDENT
+GROUP BY	DEPARTMENT_NO
+ORDER BY	DEPARTMENT_NO;
+
+-- 2. 학과별 휴학생 수를 학과번호와 함께 출력하시오. 헤더는 학과번호, 휴학생수. (휴학생 0명 학과도 포함)
+SELECT	D.DEPARTMENT_NO 학과번호, COUNT(S.STUDENT_NO) 휴학생수
+FROM	TB_DEPARTMENT D
+LEFT JOIN	TB_STUDENT S ON D.DEPARTMENT_NO = S.DEPARTMENT_NO
+			AND	S.ABSENCE_YN = 'Y'
+GROUP BY	D.DEPARTMENT_NO;
+
+-- 3. 각 학과의 학생을 입학일이 빠른 순으로 번호를 매겨 출력하시오. 헤더는 학과번호, 학번, 이름, 학과내순번.
+SELECT	DEPARTMENT_NO 학과번호, STUDENT_NO 학번, STUDENT_NAME 이름, ROW_NUMBER() OVER(PARTITION BY DEPARTMENT_NO ORDER BY ENTRANCE_DATE) 학과내순번
+FROM	TB_STUDENT;
+
+-- G. DDL · DML
+-- 1. 다음 조건으로 TB_CATEGORY 테이블을 생성하시오.
+-- CATEGORY_NAME VARCHAR(20), 기본키
+-- USE_YN CHAR(1), 기본값 'Y', 'Y'/'N' 만 허용
+CREATE TABLE TB_CATEGORY(
+	CATEGORY_NAME	VARCHAR(20)	PRIMARY KEY,
+    USE_YN			CHAR(1)		DEFAULT 'Y' CHECK(USE_YN IN ('Y','N'))
+	);
+
+
+-- 2. 학과의 정원을 10% 인상 하시오.
+UPDATE	TB_DEPARTMENT SET CAPACITY = CAPACITY * 1.1;
+
