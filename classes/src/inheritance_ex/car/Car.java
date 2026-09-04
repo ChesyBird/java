@@ -29,7 +29,7 @@ public class Car {
 	public void brake(int amount) {
 		//speed = speed - amount
 		speed -= amount;
-		//if문이 한줄일 때는 중괄호 생략 가능
+		//if문이 한 줄일 때는 중괄호 생략 가능
 		if(speed < 0) speed = 0; //최저 속도 제한
 		System.out.println(model + "감속-현재속도: " + speed + "km/h");
 	}
